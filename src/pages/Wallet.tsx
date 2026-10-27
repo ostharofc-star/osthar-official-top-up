@@ -234,4 +234,13 @@ export default function WalletPage({mode='overview'}:{mode?:'overview'|'topup'|'
           <div className="panel">
             <div className="mb-4 flex justify-between">
               <h2 className="text-lg font-semibold">{mode==='history'?'Wallet ledger':'Recent activity'}</h2>
-              {mode==='history'?<button onClick={()=>window.print()} className="flex items-center gap-2 text-xs text-primary no-print"><Printer size={14}/>Print /
+              {mode==='history'?<button onClick={()=>window.print()} className="flex items-center gap-2 text-xs text-primary no-print"><Printer size={14}/>Print / save PDF</button>:<Link to="/wallet/history" className="text-xs text-primary">View all history ↗</Link>}
+            </div>
+            {txError?<p className="text-red-400">Could not load transactions.</p>:txLoading?<Spinner/>:transactions.length?transactions.map(row):<EmptyState title="A clean slate." description="Your wallet transactions will appear here after your first top-up."/>}
+            {mode==='history'&&<div className="mt-5 flex justify-between no-print"><button disabled={page===0} onClick={()=>setPage(p=>p-1)} className="text-xs text-primary disabled:opacity-30">← Previous</button><span className="text-xs text-muted-foreground">Page {page+1}</span><button disabled={transactions.length<15} onClick={()=>setPage(p=>p+1)} className="text-xs text-primary disabled:opacity-30">Next →</button></div>}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
