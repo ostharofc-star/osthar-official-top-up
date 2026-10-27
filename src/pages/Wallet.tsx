@@ -53,8 +53,8 @@ export default function WalletPage({mode='overview'}:{mode?:'overview'|'topup'|'
 
   // Green API හරහා WhatsApp Group එකට Notification යවන Function එක
   const sendWhatsAppNotification = async (topupAmount: number, payMethod: string, refNo: string) => {
-    const idInstance = "71072279677"; // Green API Instance ID එක
-    const apiTokenInstance = "de0bf8b533b1479a82d1734a9a5aa80b281a77c483a64a5f98"; // ඔබේ Green API Token එක මෙතැනට දමන්න
+    const idInstance = "71072279677"; // ඔබේ Green API Instance ID එක
+    const apiTokenInstance = "de0bf8b533b1479a82d1734a9a5aa80b281a77c483a64a5f98"; // ඔබේ Green API Token එක
     const chatId = "120363412515094330@g.us"; // ඔබේ WhatsApp Group ID එක[cite: 2, 3]
 
     const userEmail = session?.user?.email || "Unknown User";
