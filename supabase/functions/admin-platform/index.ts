@@ -7,9 +7,8 @@ Deno.serve(async req=>{
   try{
     const b=await req.json();const client=db();
     if(b.action==='login'){
-          const password=Deno.env.get('ADMIN_PASSWORD');
-          if(!password)throw new Error('Admin access is not configured. Set ADMIN_PASSWORD secret.');
-          // WARNING: For development only. Use a strong password (12+ chars) in production!
+      const password=Deno.env.get('ADMIN_PASSWORD');
+      if(!password)throw new Error('Admin access is not configured. Set ADMIN_PASSWORD secret.');
       const {count,error:rateError}=await client.from('admin_login_attempts').select('*',{count:'exact',head:true}).gte('created_at',new Date(Date.now()-60000).toISOString());if(rateError)throw rateError;
       if((count??0)>=10)throw new Error('Too many attempts. Please wait one minute.');
       const {error:attemptError}=await client.from('admin_login_attempts').insert({});if(attemptError)throw attemptError;
