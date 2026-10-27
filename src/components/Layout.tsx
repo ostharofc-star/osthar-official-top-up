@@ -18,7 +18,7 @@ export function Layout(){
   const {data:settings}=useSettings();
   const location=useLocation();
   const reduced=useReducedMotion();
-  useEffect(()=>{window.scrollTo({top:0,behavior:'instant'});const names:Record<string,string>={'/':'Fast & Secure Gaming Top-Ups','/store':'Store','/wallet':'Wallet','/orders':'Your orders','/login':'Sign in','/register':'Register','/cart':'Your cart'};document.title=`${names[location.pathname]??'Gaming top-ups'} | OSTHAR TOP UP`;},[location.pathname]);
+  useEffect(()=>{window.scrollTo({top:0,behavior:'instant'});const names:Record<string,string>={'/':'Osthar Top Up Store ','/store':'Store','/wallet':'Wallet','/orders':'Your orders','/login':'Sign in','/register':'Register','/cart':'Your cart'};document.title=`${names[location.pathname]??'Gaming top-ups'} | Buy FF Diamond Sri Lanka`;},[location.pathname]);
   const support=()=>{if(settings?.support_whatsapp)window.open(`https://wa.me/${String(settings.support_whatsapp).replace(/\D/g,'')}`,'_blank','noopener,noreferrer');else toast.info('WhatsApp support is being configured. Please check back soon.');};
   const links=[['/','Home'],['/store','Store'],['/wallet','Wallet'],['/orders','Orders']];
   return <>
