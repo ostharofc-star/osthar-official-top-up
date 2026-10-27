@@ -24,7 +24,6 @@ In **Supabase → Project → Edge Functions → Manage Secrets**, configure:
 | Secret | Purpose |
 | --- | --- |
 | `ADMIN_PASSWORD` | Strong, unique admin password, at least 12 characters. Never use a customer password. |
-| `PLAYER_API_URL` | Your trusted HTTPS player API endpoint. The backend appends `uid` and `region=sg`. |
 | `DISCORD_WEBHOOK_URL` | Discord incoming webhook for plain order notifications (if not using bot mode). |
 | `DISCORD_BOT_TOKEN` | Bot authentication for interactive order notifications. |
 | `DISCORD_CHANNEL_ID` | Private administrator channel receiving bot messages. |
@@ -38,13 +37,13 @@ Supabase provides the backend's `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY`; 
 
 ### Player API contract
 
-A valid response must supply a nonempty nickname (supported keys: `nickname`, `player_name`, `name`, `data.nickname`, or `AccountInfo.AccountName`) and a confirmed region (`region`, `server`, or `data.region`) equal to `sg` or `Singapore`, case-insensitively. Example:
+The backend uses `https://osthar-top-up.zoroxofc1.workers.dev/?uid=` and appends the numeric player UID. No `PLAYER_API_URL` secret is required. A valid response must contain `success: true`, a matching `playerId`, a nonempty `playerName`, and `region` equal to `SG` or `Singapore`, case-insensitively. Example:
 
 ```json
-{"nickname":"ExamplePlayer","region":"sg"}
+{"success":true,"playerId":"12345678","playerName":"ExamplePlayer","region":"SG"}
 ```
 
-Unknown players or wrong regions must not return a valid Singapore response. The application intentionally refuses checkout when the service is absent, fails, or cannot establish the server. Only Free Fire Singapore products can currently be fulfilled through this verification integration; other games require a matching backend adapter before becoming purchasable.
+UID entry automatically verifies after a 650 ms pause. Editing the UID clears the previous result, and outdated responses cannot approve a different UID. Checkout independently re-verifies through this API before the wallet RPC. Unknown players, API failures, missing regions and non-Singapore accounts are rejected. Only Free Fire Singapore products can currently be fulfilled through this verification integration; other games require a matching backend adapter before becoming purchasable.
 
 ### Authentication
 

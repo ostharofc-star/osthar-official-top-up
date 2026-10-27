@@ -7,12 +7,19 @@ export async function hash(value:string){const b=await crypto.subtle.digest('SHA
 export async function admin(token:string){if(typeof token!=='string'||!token||token.length>256)throw new Error('Unauthorized');const {data}=await db().from('admin_sessions').select('expires_at').eq('token_hash',await hash(token)).single();if(!data||new Date(data.expires_at)<new Date())throw new Error('Unauthorized');}
 export async function verifyPlayer(uid:string){
   if(!/^\d{6,15}$/.test(uid))throw new Error('Enter a valid numeric Player UID.');
-  const endpoint=Deno.env.get('PLAYER_API_URL');if(!endpoint)throw new Error('Player verification is not configured yet. Please contact support.');
-  const url=new URL(endpoint);if(url.protocol!=='https:')throw new Error('Player API must use HTTPS.');url.searchParams.set('uid',uid);url.searchParams.set('region','sg');
-  const response=await fetch(url,{signal:AbortSignal.timeout(10000)});if(!response.ok)throw new Error('Unable to verify this UID. Check the Singapore server.');
-  const data=await response.json();const nickname=data.nickname??data.player_name??data.name??data.data?.nickname??data.AccountInfo?.AccountName;const region=data.region??data.server??data.data?.region;
-  if(!region||!['sg','singapore'].includes(String(region).toLowerCase()))throw new Error('Could not confirm the Singapore server. Only verified Singapore accounts are supported.');
-  if(typeof nickname!=='string'||!nickname.trim()||nickname.length>100)throw new Error('Player not found. Check your UID and Singapore server.');return nickname.trim();
+  const url=new URL('https://osthar-top-up.zoroxofc1.workers.dev/');
+  url.searchParams.set('uid',uid);
+  let response:Response;
+  try{response=await fetch(url,{signal:AbortSignal.timeout(10000)});}
+  catch(error){console.error('[user-platform] player verification unavailable',String(error));throw new Error('Player verification is temporarily unavailable. Please try again.');}
+  if(!response.ok)throw new Error('Unable to verify this UID. Please try again.');
+  const data=await response.json();
+  if(!data||data.success!==true)throw new Error('Player not found. Check your UID.');
+  if(String(data.playerId)!==uid)throw new Error('Player verification returned a different UID. Please try again.');
+  const nickname=data.playerName;
+  if(typeof data.region!=='string'||!['sg','singapore'].includes(data.region.trim().toLowerCase()))throw new Error('Only verified Singapore accounts are supported.');
+  if(typeof nickname!=='string'||!nickname.trim()||nickname.length>100)throw new Error('Player not found. Check your UID and Singapore server.');
+  return nickname.trim();
 }
 export async function deliverNotifications(orderIds:string[]){
   const client=db();
