@@ -10,7 +10,7 @@ export const ease=[.22,1,.36,1] as const;
 
 export function Reveal({children,className='',delay=0}:{children:ReactNode;className?:string;delay?:number}){
   const reduced=useReducedMotion();
-  return <motion.div initial={reduced?false:{opacity:0,y:24}} whileInView={{opacity:1,y:0}} viewport={{once:true,margin:'-60px'}} transition={{duration:.6,ease,delay}} className={className}>{children}</motion.div>
+  return <motion.div initial={reduced?false:{opacity:0,y:16}} whileInView={{opacity:1,y:0}} viewport={{once:true,margin:'-24px',amount:0.05}} transition={{duration:.55,ease,delay}} className={className}>{children}</motion.div>
 }
 
 export function Brand({small=false,large=false}:{small?:boolean;large?:boolean}){
@@ -28,7 +28,7 @@ export function Brand({small=false,large=false}:{small?:boolean;large?:boolean})
 }
 
 export function PrimaryButton({children,className='',...props}:React.ComponentProps<typeof Button>){
-  return <Button className={`h-11 rounded-xl bg-primary px-5 font-semibold text-primary-foreground shadow-none hover:bg-primary/85 ${className}`} {...props}>{children}</Button>
+  return <Button className={`motion-button h-11 rounded-xl bg-primary px-5 font-semibold text-primary-foreground shadow-none hover:bg-primary/85 ${className}`} {...props}>{children}</Button>
 }
 
 export function SectionHeader({eyebrow,title,description,link}:{eyebrow:string;title:string;description?:string;link?:string}){

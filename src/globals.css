@@ -18,5 +18,21 @@
 .eyebrow { @apply text-[11px] font-bold uppercase tracking-[.22em] text-primary; }
 }
 body::before {content:'';position:fixed;inset:0;z-index:-1;pointer-events:none;background:radial-gradient(ellipse at 55% 0%,hsl(var(--primary)/.035),transparent 55%),radial-gradient(ellipse at 90% 90%,hsl(var(--accent)/.025),transparent 45%);}
+@media(prefers-reduced-motion:no-preference) {
+  html { scroll-behavior:smooth; }
+  .hero-entrance > * { animation:hero-arrive .65s cubic-bezier(.22,1,.36,1) both; }
+  .hero-entrance > :nth-child(2) { animation-delay:.08s; }
+  .hero-entrance > :nth-child(3) { animation-delay:.16s; }
+  .hero-entrance > :nth-child(4) { animation-delay:.24s; }
+  .hero-entrance > :nth-child(5) { animation-delay:.32s; }
+  .motion-card { transition:translate .3s cubic-bezier(.22,1,.36,1),border-color .3s ease,box-shadow .3s ease; }
+  .motion-button { transition:translate .2s cubic-bezier(.22,1,.36,1),background-color .2s ease,box-shadow .2s ease; }
+  .motion-button:not(:disabled):active { translate:0 1px; }
+  @media(hover:hover) and (pointer:fine) {
+    .motion-card:hover { translate:0 -4px; border-color:hsl(var(--primary)/.4); box-shadow:0 10px 28px hsl(var(--primary)/.06); }
+    .motion-button:not(:disabled):hover { translate:0 -2px; box-shadow:0 5px 18px hsl(var(--primary)/.15); }
+  }
+}
+@keyframes hero-arrive { from { opacity:0; transform:translateY(14px); } to { opacity:1; transform:translateY(0); } }
 @media(prefers-reduced-motion:reduce){*,*::before,*::after { animation:none!important;transition:none!important;scroll-behavior:auto!important; } }
 @media print { header,footer,.no-print { display:none!important; } body { background:white;color:black; } .panel { border-color:#ccc; } }
