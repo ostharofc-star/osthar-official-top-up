@@ -10,7 +10,7 @@ import {supabase} from '@/integrations/supabase/client';
 import {toast} from 'sonner';
 
 function HeaderBrand({iconOnly=false}:{iconOnly?:boolean}){
-  return <Link to="/" aria-label="OSTHAR TOP UP home" className="flex shrink-0 items-center gap-2.5"><img src="/assets/placeholder.svg" alt="placeholder" className="h-8 w-8 rounded-full border border-white/80 object-cover"/><span className={`${iconOnly?'hidden md:inline':''} text-base font-bold tracking-tight text-primary`}>OSTHAR <span className="text-violet-400">TOP UP</span></span></Link>;
+  return <Link to="/" aria-label="OSTHAR TOP UP home" className="flex shrink-0 items-center gap-2.5"><img src="/assets/osthar-logo.png" alt="OSTHAR TOP UP" className="h-8 w-8 rounded-full object-contain"/><span className={`${iconOnly?'hidden md:inline':''} text-base font-bold tracking-tight text-primary`}>OSTHAR <span className="text-violet-400">TOP UP</span></span></Link>;
 }
 export function Layout(){
   const {session,cart}=usePlatform();
@@ -19,7 +19,6 @@ export function Layout(){
   const location=useLocation();
   const reduced=useReducedMotion();
   useEffect(()=>{window.scrollTo({top:0,behavior:'instant'});const names:Record<string,string>={'/':'Fast & Secure Gaming Top-Ups','/store':'Store','/wallet':'Wallet','/orders':'Your orders','/login':'Sign in','/register':'Register','/cart':'Your cart'};document.title=`${names[location.pathname]??'Gaming top-ups'} | OSTHAR TOP UP`;},[location.pathname]);
-  useEffect(()=>{if(settings?.favicon){const icon=document.querySelector<HTMLLinkElement>('link[rel="icon"]');if(icon)icon.href=settings.favicon;}},[settings?.favicon]);
   const support=()=>{if(settings?.support_whatsapp)window.open(`https://wa.me/${String(settings.support_whatsapp).replace(/\D/g,'')}`,'_blank','noopener,noreferrer');else toast.info('WhatsApp support is being configured. Please check back soon.');};
   const links=[['/','Home'],['/store','Store'],['/wallet','Wallet'],['/orders','Orders']];
   return <>
