@@ -6,4 +6,232 @@ import {supabase} from '@/integrations/supabase/client';
 import {useBalance,usePlatform,useSettings,money,date,api} from '@/lib/platform';
 import {PageHeading,PrimaryButton,EmptyState,Spinner,StatusBadge} from '@/components/shared';
 import {toast} from 'sonner';
-export default function WalletPage({mode='overview'}:{mode?:'overview'|'topup'|'history'}){const {session}=usePlatform();const {data:balance=0,isLoading:balanceLoading}=useBalance();const {data:settings}=useSettings();const [page,setPage]=useState(0);const [method,setMethod]=useState('ez_cash');const [amount,setAmount]=useState('');const [reference,setReference]=useState('');const [file,setFile]=useState<File|null>(null);const [busy,setBusy]=useState(false);const [error,setError]=useState('');const query=useQueryClient();const {data:payments=[]}=useQuery({queryKey:['payments'],queryFn:async()=>{const {data,error}=await supabase.from('payment_settings').select('*');if(error)throw error;return data;}});const payment=payments.find(p=>p.id===method)?.data;const {data:transactions=[],isLoading:txLoading,error:txError}=useQuery({queryKey:['transactions',session?.user.id,page,mode],enabled:!!session,queryFn:async()=>{const {data,error}=await supabase.from('wallet_transactions').select('*').order('created_at',{ascending:false}).range(mode==='overview'?0:page*15,mode==='overview'?4:page*15+14);if(error)throw error;return data;}});const {data:requests=[]}=useQuery({queryKey:['topup-requests',session?.user.id],enabled:!!session,queryFn:async()=>{const {data,error}=await supabase.from('wallet_topup_requests').select('*').order('created_at',{ascending:false}).limit(20);if(error)throw error;return data;}});const submit=async(e:FormEvent)=>{e.preventDefault();setBusy(true);setError('');let path='';try{if(file){if(file.size>5242880||!['image/jpeg','image/png','image/webp'].includes(file.type))throw new Error('Upload a JPG, PNG or WebP image under 5 MB.');path=`${session!.user.id}/${crypto.randomUUID()}.${file.type.split('/')[1]}`;const {error}=await supabase.storage.from('receipts').upload(path,file);if(error)throw error;}await api({action:'topup',method,amount:Number(amount),reference,receipt:path});toast.success('Top-up submitted for review. Your balance will update after approval.');setAmount('');setReference('');setFile(null);query.invalidateQueries({queryKey:['topup-requests']});}catch(e){setError((e as Error).message);}finally{setBusy(false);}};const row=(t:any)=><div key={t.id} className="flex items-center gap-3 border-b border-border py-4 last:border-0"><span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${Number(t.amount)>0?'bg-emerald-500/10 text-emerald-400':'bg-primary/10 text-primary'}`}>{Number(t.amount)>0?<ArrowDownLeft size={17}/>:<ArrowUpRight size={17}/>}</span><div className="min-w-0 flex-1"><p className="truncate text-xs font-medium">{t.description||t.type.replace(/_/g,' ')}</p><p className="mt-1 text-[9px] text-muted-foreground">{date(t.created_at)}</p>{mode==='history'&&<p className="mt-1 break-all text-[9px] text-muted-foreground">{t.type} · {t.order_id||t.topup_id||t.id}<br/>Balance after: {money(t.balance_after)}</p>}</div><div className="text-right"><p className={`text-xs font-semibold ${Number(t.amount)>0?'text-emerald-400':'text-foreground'}`}>{Number(t.amount)>0?'+':'−'}{money(Math.abs(t.amount))}</p>{mode==='history'&&<Link to={`/wallet/receipt/${t.id}`} className="mt-2 inline-flex items-center gap-1 text-[9px] text-muted-foreground no-print"><Printer size={11}/>Print receipt</Link>}</div></div>;return <div className="container-page py-12"><PageHeading label="YOUR WALLET" title={mode==='topup'?'Fuel your next win.':mode==='history'?'Every rupee. Accounted for.':'Your game-time balance.'} description={mode==='topup'?'Make a payment, submit your reference, and we’ll take care of the rest.':'Secure funds. Simple payments. No surprises.'}/>{mode==='topup'?<div className="grid items-start gap-7 lg:grid-cols-[1.2fr_1fr]"><form onSubmit={submit} className="panel space-y-6"><div><label className="label">Payment method</label><div className="grid grid-cols-2 gap-3">{[['ez_cash','eZ Cash'],['bank_transfer','Bank Transfer']].map(([id,name])=><button key={id} type="button" onClick={()=>setMethod(id)} className={`flex items-center justify-center gap-2 rounded-xl border p-4 text-xs ${method===id?'border-primary bg-primary/5 text-primary':'border-border text-muted-foreground'}`}>{id==='ez_cash'?<Smartphone size={16}/>:<Landmark size={16}/>} {name}</button>)}</div></div><div className="rounded-xl border border-border bg-background p-4 text-xs leading-7"><h3 className="mb-2 font-semibold">{payment?.name||'Payment details'}</h3>{payment&&Object.entries(payment).filter(([k,v])=>['number','holder_name','bank','holder','account_number','branch','branch_code'].includes(k)&&v).map(([k,v])=><p key={k}><span className="capitalize text-muted-foreground">{k.replace(/_/g,' ')}:</span> {String(v)}</p>)}<p className="mt-2 text-muted-foreground">{payment?.instructions}</p>{!payment?.enabled&&<p className="mt-3 text-amber-300">This method is not accepting payments yet. Do not send funds until the administrator enables it.</p>}</div><div><label className="label">Amount (LKR) <span className="text-primary">*</span></label><input required type="number" step="0.01" min={Math.max(payment?.min_amount||0,settings?.min_topup_amount||100)} max={1000000} className="field" value={amount} onChange={e=>setAmount(e.target.value)} placeholder="1,500.00"/><p className="mt-2 text-[10px] text-muted-foreground">Minimum {money(Math.max(payment?.min_amount||0,settings?.min_topup_amount||100))}</p></div><div><label className="label">Transaction / Reference Number <span className="text-primary">*</span></label><input required maxLength={200} className="field" value={reference} onChange={e=>setReference(e.target.value)} placeholder="Your payment reference"/></div><div><label className="label">Receipt image <span className="text-muted-foreground">(optional)</span></label><label className="flex cursor-pointer flex-col items-center gap-2 rounded-xl border border-dashed border-border p-6 text-xs text-muted-foreground"><Upload size={20} className="text-primary"/>{file?file.name:'Choose a payment receipt'}<span className="text-[9px]">JPG, PNG or WebP · Up to 5 MB · Stored privately</span><input type="file" accept="image/jpeg,image/png,image/webp" className="sr-only" onChange={e=>setFile(e.target.files?.[0]||null)}/></label></div>{error&&<p role="alert" className="text-xs text-red-400">{error}</p>}<PrimaryButton type="submit" disabled={busy||!payment?.enabled} className="w-full">{busy?<Spinner/>:<ShieldCheck size={15}/>}Submit top-up request</PrimaryButton><p className="text-center text-[10px] leading-6 text-muted-foreground">This creates a pending request, not an instant credit. Your funds are added only after approval.</p></form><div><div className="panel"><Clock className="mb-4 text-primary"/><h3 className="text-lg font-semibold">A human check. A safer wallet.</h3><p className="mt-4 text-xs leading-7 text-muted-foreground">Our team checks your payment reference and receipt before adding funds. You can follow your request status right here.</p></div><div className="panel mt-5"><h3 className="mb-3 text-sm font-semibold">Recent requests</h3>{requests.length?requests.map(r=><div key={r.id} className="flex justify-between gap-3 border-b border-border py-4 last:border-0"><div><p className="text-xs">{money(r.submitted_amount)}</p><p className="mt-1 text-[9px] text-muted-foreground">{date(r.created_at)}</p>{r.rejection_reason&&<p className="mt-2 text-[10px] text-red-400">{r.rejection_reason}</p>}</div><StatusBadge status={r.status}/></div>):<p className="py-4 text-xs text-muted-foreground">No requests yet.</p>}</div></div></div>:<><div className="mb-8 grid gap-5 lg:grid-cols-[1.5fr_1fr]"><div className="rounded-2xl border border-primary/20 bg-[#091920] p-7 sm:p-9"><div className="flex justify-between"><span className="flex items-center gap-2 text-xs text-muted-foreground"><WalletIcon size={18} className="text-primary"/>Available balance</span><ShieldCheck size={21} className="text-primary"/></div><p className="my-6 font-display text-4xl font-bold tracking-tight sm:text-5xl">{balanceLoading?'…':money(balance)}</p><div className="flex gap-3 no-print"><PrimaryButton asChild className="text-xs"><Link to="/wallet/topup"><Plus size={15}/>Top up wallet</Link></PrimaryButton><Link to="/wallet/history" className="flex items-center gap-2 rounded-xl border border-border px-4 text-xs"><History size={14}/>History</Link></div></div><div className="panel"><p className="eyebrow">PLAY WITH CONFIDENCE</p><h3 className="mt-4 text-lg font-semibold">Your funds stay yours.</h3><p className="mt-3 text-xs leading-7 text-muted-foreground">Use your wallet for verified orders. Cancel a pending order and your funds return automatically.</p><Link to="/store" className="mt-4 inline-flex items-center gap-2 text-xs text-primary">Find your next package <ArrowUpRight size={14}/></Link></div></div><div className="panel"><div className="mb-4 flex justify-between"><h2 className="text-lg font-semibold">{mode==='history'?'Wallet ledger':'Recent activity'}</h2>{mode==='history'?<button onClick={()=>window.print()} className="flex items-center gap-2 text-xs text-primary no-print"><Printer size={14}/>Print / save PDF</button>:<Link to="/wallet/history" className="text-xs text-primary">View all history ↗</Link>}</div>{txError?<p className="text-red-400">Could not load transactions.</p>:txLoading?<Spinner/>:transactions.length?transactions.map(row):<EmptyState title="A clean slate." description="Your wallet transactions will appear here after your first top-up."/>}{mode==='history'&&<div className="mt-5 flex justify-between no-print"><button disabled={page===0} onClick={()=>setPage(p=>p-1)} className="text-xs text-primary disabled:opacity-30">← Previous</button><span className="text-xs text-muted-foreground">Page {page+1}</span><button disabled={transactions.length<15} onClick={()=>setPage(p=>p+1)} className="text-xs text-primary disabled:opacity-30">Next →</button></div>}</div></>}</div>}
+
+export default function WalletPage({mode='overview'}:{mode?:'overview'|'topup'|'history'}){
+  const {session}=usePlatform();
+  const {data:balance=0,isLoading:balanceLoading}=useBalance();
+  const {data:settings}=useSettings();
+  const [page,setPage]=useState(0);
+  const [method,setMethod]=useState('ez_cash');
+  const [amount,setAmount]=useState('');
+  const [reference,setReference]=useState('');
+  const [file,setFile]=useState<File|null>(null);
+  const [busy,setBusy]=useState(false);
+  const [error,setError]=useState('');
+  const query=useQueryClient();
+
+  const {data:payments=[]}=useQuery({
+    queryKey:['payments'],
+    queryFn:async()=>{
+      const {data,error}=await supabase.from('payment_settings').select('*');
+      if(error)throw error;
+      return data;
+    }
+  });
+
+  const payment=payments.find(p=>p.id===method)?.data;
+
+  const {data:transactions=[],isLoading:txLoading,error:txError}=useQuery({
+    queryKey:['transactions',session?.user.id,page,mode],
+    enabled:!!session,
+    queryFn:async()=>{
+      const {data,error}=await supabase.from('wallet_transactions').select('*').order('created_at',{ascending:false}).range(mode==='overview'?0:page*15,mode==='overview'?4:page*15+14);
+      if(error)throw error;
+      return data;
+    }
+  });
+
+  const {data:requests=[]}=useQuery({
+    queryKey:['topup-requests',session?.user.id],
+    enabled:!!session,
+    queryFn:async()=>{
+      const {data,error}=await supabase.from('wallet_topup_requests').select('*').order('created_at',{ascending:false}).limit(20);
+      if(error)throw error;
+      return data;
+    }
+  });
+
+  // Green API හරහා WhatsApp Group එකට Notification යවන Function එක
+  const sendWhatsAppNotification = async (topupAmount: number, payMethod: string, refNo: string) => {
+    const idInstance = "71072279677"; // Green API Instance ID එක
+    const apiTokenInstance = "de0bf8b533b1479a82d1734a9a5aa80b281a77c483a64a5f98"; // ඔබේ Green API Token එක මෙතැනට දමන්න
+    const chatId = "120363412515094330@g.us"; // ඔබේ WhatsApp Group ID එක[cite: 2, 3]
+
+    const userEmail = session?.user?.email || "Unknown User";
+    const userId = session?.user?.id || "N/A";
+    const methodName = payMethod === 'ez_cash' ? 'eZ Cash' : 'Bank Transfer';
+
+    const message = `
+💳 *NEW WALLET TOP-UP REQUEST!* 💳
+
+👤 *User Details:*
+• Email: ${userEmail}
+• User ID: ${userId}
+
+💵 *Amount:* ${money(topupAmount)}
+💳 *Payment Method:* ${methodName}
+🔢 *Reference No:* ${refNo}
+
+⏳ _Please check and approve the top-up request!_
+    `.trim();
+
+    const url = `https://api.green-api.com/waInstance${idInstance}/sendMessage/${apiTokenInstance}`;
+
+    try {
+      const response = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          chatId: chatId,
+          message: message,
+        }),
+      });
+
+      const result = await response.json();
+      console.log("WhatsApp Top-up Notification Sent:", result);
+    } catch (error) {
+      console.error("Error sending WhatsApp message:", error);
+    }
+  };
+
+  const submit=async(e:FormEvent)=>{
+    e.preventDefault();
+    setBusy(true);
+    setError('');
+    let path='';
+    try{
+      if(file){
+        if(file.size>5242880||!['image/jpeg','image/png','image/webp'].includes(file.type))throw new Error('Upload a JPG, PNG or WebP image under 5 MB.');
+        path=`${session!.user.id}/${crypto.randomUUID()}.${file.type.split('/')[1]}`;
+        const {error}=await supabase.storage.from('receipts').upload(path,file);
+        if(error)throw error;
+      }
+      
+      const parsedAmount = Number(amount);
+      await api({action:'topup',method,amount:parsedAmount,reference,receipt:path});
+      
+      // Top-up request එක සාර්ථක වූ පසු WhatsApp group එකට මැසේජ් එක යැවීම
+      await sendWhatsAppNotification(parsedAmount, method, reference);
+
+      toast.success('Top-up submitted for review. Your balance will update after approval.');
+      setAmount('');
+      setReference('');
+      setFile(null);
+      query.invalidateQueries({queryKey:['topup-requests']});
+    }catch(e){
+      setError((e as Error).message);
+    }finally{
+      setBusy(false);
+    }
+  };
+
+  const row=(t:any)=>(
+    <div key={t.id} className="flex items-center gap-3 border-b border-border py-4 last:border-0">
+      <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${Number(t.amount)>0?'bg-emerald-500/10 text-emerald-400':'bg-primary/10 text-primary'}`}>{Number(t.amount)>0?<ArrowDownLeft size={17}/>:<ArrowUpRight size={17}/>}</span>
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-xs font-medium">{t.description||t.type.replace(/_/g,' ')}</p>
+        <p className="mt-1 text-[9px] text-muted-foreground">{date(t.created_at)}</p>
+        {mode==='history'&&<p className="mt-1 break-all text-[9px] text-muted-foreground">{t.type} · {t.order_id||t.topup_id||t.id}<br/>Balance after: {money(t.balance_after)}</p>}
+      </div>
+      <div className="text-right">
+        <p className={`text-xs font-semibold ${Number(t.amount)>0?'text-emerald-400':'text-foreground'}`}>{Number(t.amount)>0?'+':'−'}{money(Math.abs(t.amount))}</p>
+        {mode==='history'&&<Link to={`/wallet/receipt/${t.id}`} className="mt-2 inline-flex items-center gap-1 text-[9px] text-muted-foreground no-print"><Printer size={11}/>Print receipt</Link>}
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="container-page py-12">
+      <PageHeading label="YOUR WALLET" title={mode==='topup'?'Fuel your next win.':mode==='history'?'Every rupee. Accounted for.':'Your game-time balance.'} description={mode==='topup'?'Make a payment, submit your reference, and we’ll take care of the rest.':'Secure funds. Simple payments. No surprises.'}/>
+      {mode==='topup'?(
+        <div className="grid items-start gap-7 lg:grid-cols-[1.2fr_1fr]">
+          <form onSubmit={submit} className="panel space-y-6">
+            <div>
+              <label className="label">Payment method</label>
+              <div className="grid grid-cols-2 gap-3">
+                {[['ez_cash','eZ Cash'],['bank_transfer','Bank Transfer']].map(([id,name])=>(
+                  <button key={id} type="button" onClick={()=>setMethod(id)} className={`flex items-center justify-center gap-2 rounded-xl border p-4 text-xs ${method===id?'border-primary bg-primary/5 text-primary':'border-border text-muted-foreground'}`}>
+                    {id==='ez_cash'?<Smartphone size={16}/>:<Landmark size={16}/>} {name}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="rounded-xl border border-border bg-background p-4 text-xs leading-7">
+              <h3 className="mb-2 font-semibold">{payment?.name||'Payment details'}</h3>
+              {payment&&Object.entries(payment).filter(([k,v])=>['number','holder_name','bank','holder','account_number','branch','branch_code'].includes(k)&&v).map(([k,v])=>(
+                <p key={k}><span className="capitalize text-muted-foreground">{k.replace(/_/g,' ')}:</span> {String(v)}</p>
+              ))}
+              <p className="mt-2 text-muted-foreground">{payment?.instructions}</p>
+              {!payment?.enabled&&<p className="mt-3 text-amber-300">This method is not accepting payments yet. Do not send funds until the administrator enables it.</p>}
+            </div>
+            <div>
+              <label className="label">Amount (LKR) <span className="text-primary">*</span></label>
+              <input required type="number" step="0.01" min={Math.max(payment?.min_amount||0,settings?.min_topup_amount||100)} max={1000000} className="field" value={amount} onChange={e=>setAmount(e.target.value)} placeholder="1,500.00"/>
+              <p className="mt-2 text-[10px] text-muted-foreground">Minimum {money(Math.max(payment?.min_amount||0,settings?.min_topup_amount||100))}</p>
+            </div>
+            <div>
+              <label className="label">Transaction / Reference Number <span className="text-primary">*</span></label>
+              <input required maxLength={200} className="field" value={reference} onChange={e=>setReference(e.target.value)} placeholder="Your payment reference"/>
+            </div>
+            <div>
+              <label className="label">Receipt image <span className="text-muted-foreground">(optional)</span></label>
+              <label className="flex cursor-pointer flex-col items-center gap-2 rounded-xl border border-dashed border-border p-6 text-xs text-muted-foreground">
+                <Upload size={20} className="text-primary"/>{file?file.name:'Choose a payment receipt'}
+                <span className="text-[9px]">JPG, PNG or WebP · Up to 5 MB · Stored privately</span>
+                <input type="file" accept="image/jpeg,image/png,image/webp" className="sr-only" onChange={e=>setFile(e.target.files?.[0]||null)}/>
+              </label>
+            </div>
+            {error&&<p role="alert" className="text-xs text-red-400">{error}</p>}
+            <PrimaryButton type="submit" disabled={busy||!payment?.enabled} className="w-full">
+              {busy?<Spinner/>:<ShieldCheck size={15}/>}Submit top-up request
+            </PrimaryButton>
+            <p className="text-center text-[10px] leading-6 text-muted-foreground">This creates a pending request, not an instant credit. Your funds are added only after approval.</p>
+          </form>
+          <div>
+            <div className="panel">
+              <Clock className="mb-4 text-primary"/>
+              <h3 className="text-lg font-semibold">A human check. A safer wallet.</h3>
+              <p className="mt-4 text-xs leading-7 text-muted-foreground">Our team checks your payment reference and receipt before adding funds. You can follow your request status right here.</p>
+            </div>
+            <div className="panel mt-5">
+              <h3 className="mb-3 text-sm font-semibold">Recent requests</h3>
+              {requests.length?requests.map(r=>(
+                <div key={r.id} className="flex justify-between gap-3 border-b border-border py-4 last:border-0">
+                  <div>
+                    <p className="text-xs">{money(r.submitted_amount)}</p>
+                    <p className="mt-1 text-[9px] text-muted-foreground">{date(r.created_at)}</p>
+                    {r.rejection_reason&&<p className="mt-2 text-[10px] text-red-400">{r.rejection_reason}</p>}
+                  </div>
+                  <StatusBadge status={r.status}/>
+                </div>
+              )):<p className="py-4 text-xs text-muted-foreground">No requests yet.</p>}
+            </div>
+          </div>
+        </div>
+      ):(
+        <>
+          <div className="mb-8 grid gap-5 lg:grid-cols-[1.5fr_1fr]">
+            <div className="rounded-2xl border border-primary/20 bg-[#091920] p-7 sm:p-9">
+              <div className="flex justify-between">
+                <span className="flex items-center gap-2 text-xs text-muted-foreground"><WalletIcon size={18} className="text-primary"/>Available balance</span>
+                <ShieldCheck size={21} className="text-primary"/>
+              </div>
+              <p className="my-6 font-display text-4xl font-bold tracking-tight sm:text-5xl">{balanceLoading?'…':money(balance)}</p>
+              <div className="flex gap-3 no-print">
+                <PrimaryButton asChild className="text-xs">
+                  <Link to="/wallet/topup"><Plus size={15}/>Top up wallet</Link>
+                </PrimaryButton>
+                <Link to="/wallet/history" className="flex items-center gap-2 rounded-xl border border-border px-4 text-xs"><History size={14}/>History</Link>
+              </div>
+            </div>
+            <div className="panel">
+              <p className="eyebrow">PLAY WITH CONFIDENCE</p>
+              <h3 className="mt-4 text-lg font-semibold">Your funds stay yours.</h3>
+              <p className="mt-3 text-xs leading-7 text-muted-foreground">Use your wallet for verified orders. Cancel a pending order and your funds return automatically.</p>
+              <Link to="/store" className="mt-4 inline-flex items-center gap-2 text-xs text-primary">Find your next package <ArrowUpRight size={14}/></Link>
+            </div>
+          </div>
+          <div className="panel">
+            <div className="mb-4 flex justify-between">
+              <h2 className="text-lg font-semibold">{mode==='history'?'Wallet ledger':'Recent activity'}</h2>
+              {mode==='history'?<button onClick={()=>window.print()} className="flex items-center gap-2 text-xs text-primary no-print"><Printer size={14}/>Print /
