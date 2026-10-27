@@ -38,7 +38,7 @@ export function SectionHeader({eyebrow,title,description,link}:{eyebrow:string;t
       <h2 className="text-2xl font-bold tracking-tight sm:text-[30px]">{title}</h2>
       {description&&<p className="mt-3 text-sm leading-relaxed text-muted-foreground">{description}</p>}
     </div>
-    {link&&<Link to={link} className="hidden items-center gap-2 whitespace-nowrap text-xs font-semibold text-primary sm:flex">View all products <ArrowUpRight size={16/></Link>}
+    {link&&<Link to={link} className="hidden items-center gap-2 whitespace-nowrap text-xs font-semibold text-primary sm:flex">View all products <ArrowUpRight size={16}/></Link>}
   </div>
 }
 
@@ -67,10 +67,10 @@ export function ProductCard({product:p,index=0}:{product:Product;index?:number})
         </div>
         <div className="mt-4 flex gap-2">
           <PrimaryButton className="h-9 flex-1 rounded-lg px-2 text-[11px]" disabled={p.stock_status!=='in_stock'} onClick={()=>{add(p);toast.success(`${p.name} added to cart`);}}>
-            <ShoppingCart size={13/>Add to cart
+            <ShoppingCart size={13}/>Add to cart
           </PrimaryButton>
           <Button asChild variant="outline" className="h-9 w-9 rounded-lg border-border bg-transparent p-0 hover:bg-secondary">
-            <Link to={`/product/${p.id}`} aria-label={`View ${p.name}`}><ArrowUpRight size={15/></Link>
+            <Link to={`/product/${p.id}`} aria-label={`View ${p.name}`}><ArrowUpRight size={15}/></Link>
           </Button>
         </div>
       </div>
